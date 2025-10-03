@@ -1,0 +1,6 @@
+fastapi==0.118.0
+pydantic==2.11.9
+pydantic_core==2.33.2
+selenium==4.36.0
+undetected-geckodriver==1.0.7
+uvicorn==0.37.0
