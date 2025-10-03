@@ -1,11 +1,12 @@
 import argparse
 import os
 import time
-from typing import List
+from typing import List, Union
 
 import undetected_geckodriver as uc
 import uvicorn
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
@@ -18,7 +19,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--dev", action="store_true", help="Run in development mode (no kiosk)"
 )
+parser.add_argument(
+    "--vnc", action="store_true", help="Run with VNC (skip DISPLAY setting)"
+)
 args = parser.parse_args()
+
+# Set DISPLAY for HDMI output when not using VNC
+if not args.vnc and "DISPLAY" not in os.environ:
+    os.environ["DISPLAY"] = ":0"
 
 profile_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "firefox_profile")
@@ -64,7 +72,7 @@ def openVideo(url: str):
 
 
 class CommandRequest(BaseModel):
-    commands: List[str]
+    commands: Union[str, List[str]]
 
 
 class PlayVideoRequest(BaseModel):
@@ -94,13 +102,21 @@ def update(req: CommandRequest):
     print("commands:", req.commands)
     body = driver.find_element("tag name", "body")  # find <body>
 
-    for command in req.commands:
+    # Handle both string and list of commands
+    commands = [req.commands] if isinstance(req.commands, str) else req.commands
+
+    for command in commands:
         key = KEY_MAP.get(command.lower())
         if key:  # ignore unknown commands
             body.send_keys(key)
 
-    return {"status": "ok", "executed": req.commands}
+    return {"status": "ok", "executed": commands}
 
 
 if __name__ == "__main__":
+    # Mount static files from build directory
+    build_path = os.path.join(os.path.dirname(__file__), "build")
+    if os.path.exists(build_path):
+        app.mount("/", StaticFiles(directory=build_path, html=True), name="static")
+
     uvicorn.run(app, host="0.0.0.0", port=5000)

@@ -1,0 +1,7 @@
+{
+  "name": "ytbox",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd webremote && npm run build"
+  }
+}
